@@ -1,0 +1,2 @@
++ PLATFORM:win64 CustomModule 3.10.5 ..\BUILD\x64\Maya_2018_Debug
+
