@@ -5,4 +5,9 @@
     <RemoteDebuggerCommand>$(Maya2018)</RemoteDebuggerCommand>
     <RemoteDebuggerAttach>true</RemoteDebuggerAttach>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <RemoteDebuggerCommand>$(Maya2018)</RemoteDebuggerCommand>
+    <RemoteDebuggerAttach>true</RemoteDebuggerAttach>
+    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+  </PropertyGroup>
 </Project>

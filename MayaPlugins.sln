@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.271
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TemplatePlugin", "TemplatePlugin\TemplatePlugin.vcxproj", "{8165D536-D089-4F27-B2ED-9A9482405482}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MPxNodeTemplatePlugin", "TemplatePlugin\TemplatePlugin.vcxproj", "{8165D536-D089-4F27-B2ED-9A9482405482}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PluginExtras", "PluginExtras\PluginExtras.vcxproj", "{36BC7045-F3E0-472D-AAFE-AFFF05775831}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MPxGPUDeformerTemplatePlugin", "MPxGPUDeformerTemplatePlugin\MPxGPUDeformerTemplatePlugin.vcxproj", "{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,18 @@ Global
 		{36BC7045-F3E0-472D-AAFE-AFFF05775831}.Release|x64.Build.0 = Release|x64
 		{36BC7045-F3E0-472D-AAFE-AFFF05775831}.Release|x86.ActiveCfg = Release|Win32
 		{36BC7045-F3E0-472D-AAFE-AFFF05775831}.Release|x86.Build.0 = Release|Win32
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Debug|x64.ActiveCfg = Debug|x64
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Debug|x64.Build.0 = Debug|x64
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Debug|x86.ActiveCfg = Debug|Win32
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Debug|x86.Build.0 = Debug|Win32
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Maya_2018_Debug|x64.ActiveCfg = Maya_2018_Debug|x64
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Maya_2018_Debug|x64.Build.0 = Maya_2018_Debug|x64
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Maya_2018_Debug|x86.ActiveCfg = Debug|Win32
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Maya_2018_Debug|x86.Build.0 = Debug|Win32
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Release|x64.ActiveCfg = Release|x64
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Release|x64.Build.0 = Release|x64
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Release|x86.ActiveCfg = Release|Win32
+		{1EC8D79F-344D-49A3-8EF2-06E7309EC0B9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

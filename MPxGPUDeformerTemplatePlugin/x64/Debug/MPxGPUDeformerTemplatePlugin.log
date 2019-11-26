@@ -1,0 +1,1 @@
+﻿C:\Users\Hampuz\Documents\GitHub\MayaPlugins\MPxGPUDeformerTemplatePlugin\MPxGPUDeformerTemplatePlugin.vcxproj(68,5): error MSB4019: The imported project "C:\Users\Hampuz\Documents\GitHub\MayaPlugins\SolutionExtras\PropertySheet.props" was not found. Confirm that the path in the <Import> declaration is correct, and that the file exists on disk.

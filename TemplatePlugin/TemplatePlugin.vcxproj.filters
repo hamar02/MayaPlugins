@@ -18,12 +18,12 @@
     <ClCompile Include="initializePlugin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TemplatePlugin.cpp">
+    <ClCompile Include="MPxNodeTemplatePlugin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="TemplatePlugin.h">
+    <ClInclude Include="MPxNodeTemplatePlugin.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
