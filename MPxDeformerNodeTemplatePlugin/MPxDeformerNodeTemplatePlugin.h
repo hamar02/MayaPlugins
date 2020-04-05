@@ -66,6 +66,8 @@
 #include <maya/MFnMesh.h>
 #include <clew/clew_cl.h>
 #include <vector>
+#include <maya/MGlobal.h>
+
 
 class MPxDeformerNodeTemplatePlugin : public MPxDeformerNode
 {
@@ -102,6 +104,7 @@ public:
 
 	virtual MPxGPUDeformer::DeformerStatus evaluate(MDataBlock& block, const MEvaluationNode&, const MPlug& plug, unsigned int numElements, const MAutoCLMem, const MAutoCLEvent, MAutoCLMem, MAutoCLEvent&);
 	virtual void terminate();
+
 	static MGPUDeformerRegistrationInfo* getGPUDeformerInfo();
 	static bool validateNodeInGraph(MDataBlock& block, const MEvaluationNode&, const MPlug& plug, MStringArray* messages);
 	static bool validateNodeValues(MDataBlock& block, const MEvaluationNode&, const MPlug& plug, MStringArray* messages);

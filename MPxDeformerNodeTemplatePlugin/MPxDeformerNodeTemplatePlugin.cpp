@@ -43,7 +43,9 @@ MPxDeformerNodeTemplatePlugin::deform(MDataBlock& block,
 	//
 {
 	MStatus returnStatus;
-
+	char *maya_location = getenv("MAYA_LOCATION");
+	MString openCLKernelFile(maya_location);
+	MGlobal::displayInfo(openCLKernelFile);
 	// Envelope data from the base class.
 	// The envelope is simply a scale factor.
 	//
@@ -190,7 +192,7 @@ MPxGPUDeformer::DeformerStatus offsetGPUDeformer::evaluate(
 	{
 		char *maya_location = getenv("MAYA_LOCATION");
 		MString openCLKernelFile(maya_location);
-		openCLKernelFile += "/../Extra/devkitBase/devkit/plug-ins/offsetNode/offset.cl";
+		openCLKernelFile += "/devkit/plug-ins/offsetNode/offset.cl";
 		MString openCLKernelName("offset");
 		fKernel = MOpenCLInfo::getOpenCLKernel(openCLKernelFile, openCLKernelName);
 		if (!fKernel) return MPxGPUDeformer::kDeformerFailure;

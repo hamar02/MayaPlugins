@@ -7,7 +7,7 @@ MStatus initializePlugin(MObject obj)
 {
 	MStatus result;
 	MFnPlugin plugin(obj, PLUGIN_COMPANY, "3.0", "Any");
-	result = plugin.registerNode("MPxDeformerNodeTemplatePlugin", MPxDeformerNodeTemplatePlugin::id, MPxDeformerNodeTemplatePlugin::creator,
+	result = plugin.registerNode("offset", MPxDeformerNodeTemplatePlugin::id, MPxDeformerNodeTemplatePlugin::creator,
 		MPxDeformerNodeTemplatePlugin::initialize, MPxNode::kDeformerNode);
 	MString nodeClassName("offset");
 	MString registrantId("mayaPluginExample");
