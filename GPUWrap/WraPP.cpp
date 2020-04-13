@@ -51,6 +51,62 @@ MStatus WraPPDeformerNode::deform(MDataBlock & block, MItGeometry & iter, const 
 	if (status != MS::kSuccess) return status;
 	float uniScale = uScaleDH.asFloat();
 
+	MArrayDataHandle inputArrDH = block.inputValue(input, &status);
+	if (status != MS::kSuccess) return status;
+
+	//bind data
+	std::vector<Triangle> bindTriangles;
+
+
+	 status = GetBindData(inputArrDH, bindTriangles);
+	 if (status != MS::kSuccess) return status;
+
+
+
+	//per object to be deformed, toBeDeformedIndex 0 is bindData
+	for (int toBeDeformedIndex=1; toBeDeformedIndex < inputArrDH.elementCount(); ++toBeDeformedIndex)
+	{
+		inputArrDH.jumpToElement(toBeDeformedIndex);
+		MDataHandle inputDH = inputArrDH.inputValue(&status);
+		if (status != MS::kSuccess) return status;
+		MDataHandle inputGeomDH = inputDH.child(inputGeom);
+		MObject mesh = inputGeomDH.asMesh();
+	
+		std::vector<Triangle> triangles;
+		status = GetTrianglesFromMesh(mesh, triangles);
+		if (status != MS::kSuccess) return status;
+
+		std::vector<MPoint> baryCoords;
+		for (int trianglesIndex=0; trianglesIndex<triangles.size(); ++trianglesIndex)
+		{
+			for (int vertexIndex =0 ; vertexIndex < 3; ++vertexIndex)
+			{
+				for (int bindTriangleIndex = 0; bindTriangleIndex < bindTriangles.size(); ++bindTriangleIndex)
+				{
+					MPoint baryCoord;
+					bool success = false;
+					success = Barycentric(
+						triangles[trianglesIndex].vertices[vertexIndex].uv,
+						bindTriangles[bindTriangleIndex].vertices[0].uv,
+						bindTriangles[bindTriangleIndex].vertices[1].uv,
+						bindTriangles[bindTriangleIndex].vertices[2].uv,
+						baryCoord.x,
+						baryCoord.y,
+						baryCoord.z
+					);
+					baryCoord.w = success;
+					if (success == true)
+					{
+						baryCoords.push_back(baryCoord);
+						continue;
+					}
+				}
+			}
+		}
+
+		int gg = 0;
+	}
+
 
 	for (; !iter.isDone(); iter.next())
 	{
@@ -67,6 +123,133 @@ MStatus WraPPDeformerNode::deform(MDataBlock & block, MItGeometry & iter, const 
 	return MS::kSuccess;
 }
 
+bool WraPPDeformerNode::Barycentric(MPoint p, MPoint a, MPoint b, MPoint c, double &u, double &v, double &w)
+{
+	MVector v0 = b - a;
+	MVector v1 = c - a;
+	MVector v2 = p - a;
+	double d00 = v0 * v0;
+	double d01 = v0 * v1;
+	double d11 = v1 * v1;
+	double d20 = v2 * v0;
+	double d21 = v2 * v1;
+	double denom = d00 * d11 - d01 * d01;
+	v = (d11 * d20 - d01 * d21) / denom;
+	w = (d00 * d21 - d01 * d20) / denom;
+	u = 1.0 - v - w;
+
+
+	if (v > 1.0 == true)
+		return false;
+	if (w > 1.0 == true)
+		return false;
+	if (u > 1.0 == true)
+		return false;
+
+	if (v < 0.0 == true)
+		return false;
+	if (w < 0.0 == true)
+		return false;
+	if (u < 0.0 == true)
+		return false;
+
+	if (AreSame(v + w + u, 1.0) == true)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool WraPPDeformerNode::AreSame(double a, double b)
+{
+	bool result = fabs(a - b) < EPSILON;
+	return result;
+}
+
+MStatus WraPPDeformerNode::GetBindData(MArrayDataHandle &inputArrDH, std::vector<Triangle> &bindTriangles)
+{
+	MStatus status;
+	inputArrDH.jumpToElement(0);
+	MDataHandle inputDH = inputArrDH.inputValue(&status);
+	if (status != MS::kSuccess) return MS::kNotFound;
+	MDataHandle inputGeomDH = inputDH.child(inputGeom);
+	MObject mesh = inputGeomDH.asMesh();
+	status = GetTrianglesFromMesh(mesh, bindTriangles);
+
+	return status;
+}
+
+MStatus WraPPDeformerNode::GetTrianglesFromMesh(MObject mesh,  std::vector<Triangle> &triangles)
+{
+	MStatus status;
+	MItMeshPolygon vIter = MItMeshPolygon(mesh, &status);
+	if (status != MS::kSuccess) return status;
+	//per per polygonal surface
+	for (; !vIter.isDone(); vIter.next())
+	{
+		//per triangle
+		Triangle triangle;
+		int numTriangles = 0;
+		vIter.numTriangles(numTriangles);
+		for (int triangleIndex = 0; triangleIndex < numTriangles; ++triangleIndex) {
+			std::vector<Vert> vertices;
+
+			float2 uv = { 0, 0 };
+			MPointArray points;
+			MIntArray vertexIndices;
+			status = vIter.getTriangle(triangleIndex, points, vertexIndices, MSpace::kObject);
+			if (status != MS::kSuccess) return status;
+
+			//per vertex
+			for (int vertexIndex = 0; vertexIndex < vertexIndices.length(); ++vertexIndex)
+			{
+				vIter.getUV(vertexIndices[vertexIndex], uv, &MString("map1"));
+				triangle.vertices[vertexIndex].point = points[vertexIndex];
+
+				triangle.vertices[vertexIndex].uv[0] = uv[0];
+				triangle.vertices[vertexIndex].uv[1] = uv[1];
+			}
+
+			triangles.push_back(triangle);
+		}
+	}
+
+	return MS::kSuccess;
+}
+
+MStatus GetTrianglesFromMesh(MObject mesh, MStatus &status, std::vector<Triangle> &triangles)
+{
+	MItMeshPolygon vIter = MItMeshPolygon(mesh, &status);
+	if (status != MS::kSuccess) return status;
+	//per per polygonal surface
+	for (; !vIter.isDone(); vIter.next())
+	{
+		//per triangle
+		Triangle triangle;
+		int numTriangles = 0;
+		vIter.numTriangles(numTriangles);
+		for (int triangleIndex = 0; triangleIndex < numTriangles; ++triangleIndex) {
+			std::vector<Vert> vertices;
+
+			float2 uv = { 0, 0 };
+			MPointArray points;
+			MIntArray vertexIndices;
+			status = vIter.getTriangle(triangleIndex, points, vertexIndices, MSpace::kObject);
+			//per vertex
+			for (int vertexIndex = 0; vertexIndex < vertexIndices.length(); ++vertexIndex)
+			{
+				vIter.getUV(vertexIndices[vertexIndex], uv, &MString("map1"));
+				triangle.vertices[vertexIndex].point = points[vertexIndex];
+
+				triangle.vertices[vertexIndex].uv[0] = uv[0];
+				triangle.vertices[vertexIndex].uv[1] = uv[1];
+			}
+
+			triangles.push_back(triangle);
+		}
+	}
+}
 WraPPGPUDeformer::WraPPGPUDeformer()
 {
 

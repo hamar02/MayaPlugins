@@ -6,13 +6,34 @@
 #include <maya/MStringArray.h>
 #include <maya/MDataHandle.h>
 #include <maya/MItGeometry.h>
+#include <maya/MItMeshVertex.h>
+#include <maya/MItMeshFaceVertex.h>
+#include <maya/MItMeshPolygon.h>
 #include <maya/MPoint.h>
+#include <maya/MPointArray.h>
+#include <maya/MIntArray.h>
+#include <maya/MFloatArray.h>
+
 #include <maya/MMatrix.h>
 #include <maya/MFnNumericAttribute.h>
 #include <maya/MViewport2Renderer.h>
 #include <maya/MOpenCLInfo.h>
 //#include <clew/clew_cl.h>
 #include <maya/MFnDependencyNode.h>
+
+#include <vector>
+
+#define EPSILON 0.000000001
+
+struct Vert
+{
+	MPoint point;
+	MPoint uv;
+
+};
+struct Triangle {
+	Vert vertices[3];
+};
 
 class WraPPDeformerNode: public MPxDeformerNode
 {
@@ -22,6 +43,12 @@ public:
 	static void* creator();
 	static MStatus initialize();
 	MStatus deform(MDataBlock& block, MItGeometry& iter, const MMatrix& mat, unsigned int multiIndex) override;
+
+	bool Barycentric(MPoint p, MPoint a, MPoint b, MPoint c, double &u, double &v, double &w);
+	bool AreSame(double a, double b);
+	MStatus GetBindData(MArrayDataHandle &inputArrDH, std::vector<Triangle> &bindTriangles);
+	MStatus GetTrianglesFromMesh(MObject mesh, std::vector<Triangle> &triangles);
+	
 
 
 	static MTypeId id;
