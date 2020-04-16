@@ -13,7 +13,7 @@
 #include <maya/MPointArray.h>
 #include <maya/MIntArray.h>
 #include <maya/MFloatArray.h>
-
+#include <maya/MFnMesh.h>
 #include <maya/MMatrix.h>
 #include <maya/MFnNumericAttribute.h>
 #include <maya/MViewport2Renderer.h>
@@ -27,12 +27,17 @@
 
 struct Vert
 {
-	MPoint point;
+	int vertexIndex;
 	MPoint uv;
 
 };
 struct Triangle {
 	Vert vertices[3];
+};
+
+struct BaryCoordMatch {
+	MPoint baryCoord;
+	Triangle triangle;
 };
 
 class WraPPDeformerNode: public MPxDeformerNode
@@ -46,7 +51,6 @@ public:
 
 	bool Barycentric(MPoint p, MPoint a, MPoint b, MPoint c, double &u, double &v, double &w);
 	bool AreSame(double a, double b);
-	MStatus GetBindData(MArrayDataHandle &inputArrDH, std::vector<Triangle> &bindTriangles);
 	MStatus GetTrianglesFromMesh(MObject mesh, std::vector<Triangle> &triangles);
 	
 
