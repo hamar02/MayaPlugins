@@ -39,91 +39,168 @@ MStatus WraPPDeformerNode::initialize()
 	return MS::kSuccess;
 }
 
-MStatus WraPPDeformerNode::deform(MDataBlock & block, MItGeometry & iter, const MMatrix & mat, unsigned int multiIndex)
+MStatus WraPPDeformerNode::compute(const MPlug& plug, MDataBlock& dataBlock)
 {
+	std::string varName = std::string(plug.name().asChar());
 	MStatus status;
 
-	MDataHandle envDH = block.inputValue(envelope, &status);
+	MDataHandle envDH = dataBlock.inputValue(envelope, &status);
 	if (status != MS::kSuccess) return status;
 	float env = envDH.asFloat();
 
-	MDataHandle uScaleDH = block.inputValue(uScale, &status);
+	MDataHandle uScaleDH = dataBlock.inputValue(uScale, &status);
 	if (status != MS::kSuccess) return status;
 	float uniScale = uScaleDH.asFloat();
 
-	MArrayDataHandle inputArrDH = block.inputValue(input, &status);
+	MArrayDataHandle inputArrDH = dataBlock.inputValue(input, &status);
 	if (status != MS::kSuccess) return status;
-
 	//source data
-	std::vector<Triangle> sourceTriangles;
+	if (plug.attribute() == outputGeom) {
+		unsigned int index = plug.logicalIndex();
+		if (index==0 && bound == false)
+		{
+			inputArrDH.jumpToElement(index);
+			MDataHandle inputDH = inputArrDH.inputValue(&status);
+			if (status != MS::kSuccess) return MS::kNotFound;
+			MDataHandle inputGeomDH = inputDH.child(inputGeom);
+			MObject sourceMesh = inputGeomDH.asMesh();
+			std::vector<Triangle> sourceTriangles;
+			status = GetTrianglesFromMesh(sourceMesh, sourceTriangles);	 
+			if (status != MS::kSuccess) return status;
 
 
+			//bind data
+			//per object to be deformed, geometryIndex 0 is bindData
+			for (int geometryIndex=1; geometryIndex < inputArrDH.elementCount(); ++geometryIndex)
+			{
+				inputArrDH.jumpToElement(geometryIndex);
+				MDataHandle inputDH = inputArrDH.inputValue(&status);
+				if (status != MS::kSuccess) return status;
+				MDataHandle inputGeomDH = inputDH.child(inputGeom);
+				MObject targetMesh = inputGeomDH.asMesh();
+				MPointArray targetVertices;
+				MFnMesh targetMeshFn(targetMesh);
+				targetMeshFn.getPoints(targetVertices, MSpace::kObject);
+
+				std::vector<BaryCoordMatch> baryCoords;
+				MItMeshVertex iter(targetMesh);
+				float2 uv;
+				for (;!iter.isDone(); iter.next())
+				{
+					bool success = false;
+				
+					for (int bindTriangleIndex = 0; bindTriangleIndex < sourceTriangles.size() && success==false; ++bindTriangleIndex)
+					{
+						BaryCoordMatch baryCoordMatch;
+						iter.getUV(uv);
+						MPoint pUV;
+						pUV.x = uv[0];
+						pUV.y = uv[1];
+						success = Barycentric(
+							pUV,
+							sourceTriangles[bindTriangleIndex].vertices[0].uv,
+							sourceTriangles[bindTriangleIndex].vertices[1].uv,
+							sourceTriangles[bindTriangleIndex].vertices[2].uv,
+							baryCoordMatch.baryCoord.x,
+							baryCoordMatch.baryCoord.y,
+							baryCoordMatch.baryCoord.z
+						);
+						baryCoordMatch.baryCoord.w = success;
+						if (success == true)
+						{
+							baryCoordMatch.triangle.vertices[0] = sourceTriangles[bindTriangleIndex].vertices[0];
+							baryCoordMatch.triangle.vertices[1] = sourceTriangles[bindTriangleIndex].vertices[1];
+							baryCoordMatch.triangle.vertices[2] = sourceTriangles[bindTriangleIndex].vertices[2];
+
+							baryCoords.push_back(baryCoordMatch);
+						}
+					}
+					
+				}
+
+				baryCoordMatchedGeometries.push_back(baryCoords);
+
+			}
+			bound = true;
+		}
+	}
+
+
+	//deform
 	inputArrDH.jumpToElement(0);
 	MDataHandle inputDH = inputArrDH.inputValue(&status);
 	if (status != MS::kSuccess) return MS::kNotFound;
 	MDataHandle inputGeomDH = inputDH.child(inputGeom);
+
 	MObject sourceMesh = inputGeomDH.asMesh();
-	status = GetTrianglesFromMesh(sourceMesh, sourceTriangles);	 if (status != MS::kSuccess) return status;
 
-
-	std::vector<std::vector<Triangle>> geometries;
-	//bind data
-	//per object to be deformed, toBeDeformedIndex 0 is bindData
-	for (int toBeDeformedIndex=1; toBeDeformedIndex < inputArrDH.elementCount(); ++toBeDeformedIndex)
-	{
-		inputArrDH.jumpToElement(toBeDeformedIndex);
-		MDataHandle inputDH = inputArrDH.inputValue(&status);
-		if (status != MS::kSuccess) return status;
-		MDataHandle inputGeomDH = inputDH.child(inputGeom);
-		MObject mesh = inputGeomDH.asMesh();
-	
-		std::vector<Triangle> triangles;
-		status = GetTrianglesFromMesh(mesh, triangles);
-		if (status != MS::kSuccess) return status;
-
-		std::vector<BaryCoordMatch> baryCoords;
-		for (int trianglesIndex=0; trianglesIndex<triangles.size(); ++trianglesIndex)
-		{
-			for (int vertexIndex =0 ; vertexIndex < 3; ++vertexIndex)
-			{
-				bool success = false;
-				for (int bindTriangleIndex = 0; bindTriangleIndex < sourceTriangles.size() && success==false; ++bindTriangleIndex)
-				{
-					BaryCoordMatch baryCoordMatch;
-					success = Barycentric(
-						triangles[trianglesIndex].vertices[vertexIndex].uv,
-						sourceTriangles[bindTriangleIndex].vertices[0].uv,
-						sourceTriangles[bindTriangleIndex].vertices[1].uv,
-						sourceTriangles[bindTriangleIndex].vertices[2].uv,
-						baryCoordMatch.baryCoord.x,
-						baryCoordMatch.baryCoord.y,
-						baryCoordMatch.baryCoord.z
-					);
-					baryCoordMatch.baryCoord.w = success;
-					if (success == true)
-					{
-						baryCoordMatch.triangle.vertices[0] = sourceTriangles[bindTriangleIndex].vertices[0];
-						baryCoordMatch.triangle.vertices[1] = sourceTriangles[bindTriangleIndex].vertices[1];
-						baryCoordMatch.triangle.vertices[2] = sourceTriangles[bindTriangleIndex].vertices[2];
-
-						baryCoords.push_back(baryCoordMatch);
-					}
-				}
-			}
-		}
-
-		geometries.push_back(triangles);
-		int gg = 0;
-
+	MPointArray sourceVertices;
+	MFnMesh meshFn(sourceMesh);
+	meshFn.getPoints(sourceVertices, MSpace::kWorld);
+	std::vector<MPoint> points;
+	for (int i = 0; i < sourceVertices.length(); ++i) {
+		points.push_back(sourceVertices[i]);
+	}
+	meshFn.getPoints(sourceVertices, MSpace::kObject);
+	std::vector<MPoint> wpoints;
+	for (int i = 0; i < sourceVertices.length(); ++i) {
+		wpoints.push_back(sourceVertices[i]);
 	}
 
-	//deform
-	MPointArray vertices;
-	MFnMesh meshFn(sourceMesh);
-	meshFn.getPoints(vertices);
-	for (int toBeDeformedIndex = 1; toBeDeformedIndex < inputArrDH.elementCount(); ++toBeDeformedIndex)
+	MArrayDataHandle outputGeomArrDH = dataBlock.outputValue(outputGeom, &status);
+	if (status != MS::kSuccess) return status;
+	for (int geometryIndex = 0; geometryIndex < baryCoordMatchedGeometries.size(); ++geometryIndex)
 	{
-		geometries[toBeDeformedIndex];
+		std::vector<MPoint> newVertices;
+		MPointArray vertices;
+
+		for (int vertexIndex = 0; vertexIndex < baryCoordMatchedGeometries[geometryIndex].size(); ++vertexIndex)
+		{
+			MPoint baryCoord = baryCoordMatchedGeometries[geometryIndex][vertexIndex].baryCoord;
+			int triangleVertexIndex1 = baryCoordMatchedGeometries[geometryIndex][vertexIndex].triangle.vertices[0].vertexIndex;
+			int triangleVertexIndex2 = baryCoordMatchedGeometries[geometryIndex][vertexIndex].triangle.vertices[1].vertexIndex;
+			int triangleVertexIndex3 = baryCoordMatchedGeometries[geometryIndex][vertexIndex].triangle.vertices[2].vertexIndex;
+
+			MPoint vertex1 = sourceVertices[triangleVertexIndex1];
+			MPoint vertex2 = sourceVertices[triangleVertexIndex2];
+			MPoint vertex3 = sourceVertices[triangleVertexIndex3];
+
+			MPoint newVertex = baryCoord[0] * vertex1 + baryCoord[1] * vertex2 + baryCoord[2] * vertex3;
+			//do more calculations, like normal and distance
+
+
+
+			//6 verts, only 4 is unique, setPoints needs 4 unique not 6, map 6 back to 4
+			newVertices.push_back(newVertex);
+			vertices.append(newVertex);
+		}
+
+		inputArrDH.jumpToElement(geometryIndex+1);
+		MDataHandle inputDH = inputArrDH.inputValue(&status);
+		if (status != MS::kSuccess) return status;
+
+		MDataHandle inputGeomDH = inputDH.child(inputGeom);
+		MObject targetMesh = inputGeomDH.asMesh();
+		MFnMesh newMeshFn(targetMesh);
+
+		status = newMeshFn.setPoints(vertices, MSpace::kObject);
+		if (status != MS::kSuccess) return MS::kNotFound;
+		
+		status = newMeshFn.setObject(targetMesh);
+		if (status != MS::kSuccess) return MS::kNotFound;
+
+
+		//output
+		outputGeomArrDH.jumpToElement(geometryIndex+1);
+		if (status != MS::kSuccess) return MS::kNotFound;
+
+		MDataHandle outputGeomDH = outputGeomArrDH.outputValue(&status);
+		if (status != MS::kSuccess) return MS::kNotFound;
+
+		status = outputGeomDH.set(targetMesh);
+		if (status != MS::kSuccess) return MS::kNotFound;
+
+		int gg = 0;
 	}
 
 	return MS::kSuccess;
@@ -180,9 +257,7 @@ MStatus WraPPDeformerNode::GetTrianglesFromMesh(MObject mesh,  std::vector<Trian
 	MFloatArray v;
 	MIntArray triangleCount;
 	MIntArray triangleVertexIndices;
-	MPointArray vertices;
 	MFnMesh meshFn(mesh);
-	meshFn.getPoints(vertices);
 	meshFn.getTriangles(triangleCount, triangleVertexIndices);
 	meshFn.getUVs(u, v, &MString("map1"));
 
@@ -223,7 +298,7 @@ WraPPGPUDeformer::~WraPPGPUDeformer()
 }
 
 MPxGPUDeformer::DeformerStatus WraPPGPUDeformer::evaluate(
-	MDataBlock & block, 
+	MDataBlock & dataBlock, 
 	const MEvaluationNode &, 
 	const MPlug & plug, 
 	unsigned int numElements, 
@@ -234,7 +309,7 @@ MPxGPUDeformer::DeformerStatus WraPPGPUDeformer::evaluate(
 {
 	MStatus status;
 
-	status = updateGPU(block);
+	status = updateGPU(dataBlock);
 	if (status != MS::kSuccess) return MPxGPUDeformer::kDeformerFailure;
 
 	if (!clKernel.get())
@@ -299,10 +374,10 @@ MPxGPUDeformer::DeformerStatus WraPPGPUDeformer::evaluate(
 	return MPxGPUDeformer::kDeformerSuccess;
 }
 
-MStatus WraPPGPUDeformer::updateGPU(MDataBlock & block)
+MStatus WraPPGPUDeformer::updateGPU(MDataBlock & dataBlock)
 {
 	MStatus status = MS::kSuccess;
-	MDataHandle uScaleDH = block.inputValue(WraPPDeformerNode::uScale, &status);
+	MDataHandle uScaleDH = dataBlock.inputValue(WraPPDeformerNode::uScale, &status);
 	if (status != MS::kSuccess) return status;
 	float uniScale = uScaleDH.asFloat();
 
@@ -334,12 +409,12 @@ MGPUDeformerRegistrationInfo* WraPPGPUDeformer::getGPUDeformerInfo()
 	return &theOne;
 }
 
-bool WraPPGPUDeformer::validateNodeInGraph(MDataBlock & block, const MEvaluationNode &, const MPlug & plug, MStringArray * messages)
+bool WraPPGPUDeformer::validateNodeInGraph(MDataBlock & dataBlock, const MEvaluationNode &, const MPlug & plug, MStringArray * messages)
 {
 	return true;
 }
 
-bool WraPPGPUDeformer::validateNodeValues(MDataBlock & block, const MEvaluationNode &, const MPlug & plug, MStringArray * messages)
+bool WraPPGPUDeformer::validateNodeValues(MDataBlock & dataBlock, const MEvaluationNode &, const MPlug & plug, MStringArray * messages)
 {
 	return true;
 }

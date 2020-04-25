@@ -14,6 +14,7 @@
 #include <maya/MIntArray.h>
 #include <maya/MFloatArray.h>
 #include <maya/MFnMesh.h>
+#include <maya/MFnMeshData.h>
 #include <maya/MMatrix.h>
 #include <maya/MFnNumericAttribute.h>
 #include <maya/MViewport2Renderer.h>
@@ -47,14 +48,15 @@ public:
 	~WraPPDeformerNode() override;
 	static void* creator();
 	static MStatus initialize();
-	MStatus deform(MDataBlock& block, MItGeometry& iter, const MMatrix& mat, unsigned int multiIndex) override;
+	MStatus compute(const MPlug& plug, MDataBlock& dataBlock) override;
 
 	bool Barycentric(MPoint p, MPoint a, MPoint b, MPoint c, double &u, double &v, double &w);
 	bool AreSame(double a, double b);
 	MStatus GetTrianglesFromMesh(MObject mesh, std::vector<Triangle> &triangles);
 	
 
-
+	std::vector<std::vector<BaryCoordMatch>> baryCoordMatchedGeometries;
+	bool bound = false;
 	static MTypeId id;
 	static MObject uScale;
 private:
@@ -70,14 +72,14 @@ public:
 	~WraPPGPUDeformer() override;
 
 
-	MPxGPUDeformer::DeformerStatus evaluate(MDataBlock & block, const MEvaluationNode &, const MPlug & plug, unsigned int numElements, const MAutoCLMem inputBuffer, const MAutoCLEvent inputEvent, MAutoCLMem outputBuffer, MAutoCLEvent& outputEvent) override;
-	MStatus updateGPU(MDataBlock &block);
+	MPxGPUDeformer::DeformerStatus evaluate(MDataBlock & dataBlock, const MEvaluationNode &, const MPlug & plug, unsigned int numElements, const MAutoCLMem inputBuffer, const MAutoCLEvent inputEvent, MAutoCLMem outputBuffer, MAutoCLEvent& outputEvent) override;
+	MStatus updateGPU(MDataBlock &dataBlock);
 
 	void terminate() override;
 
 	static MGPUDeformerRegistrationInfo* getGPUDeformerInfo();
-	static bool validateNodeInGraph(MDataBlock& block, const MEvaluationNode&, const MPlug& plug, MStringArray* messages);
-	static bool validateNodeValues(MDataBlock& block, const MEvaluationNode&, const MPlug& plug, MStringArray* messages);
+	static bool validateNodeInGraph(MDataBlock& dataBlock, const MEvaluationNode&, const MPlug& plug, MStringArray* messages);
+	static bool validateNodeValues(MDataBlock& dataBlock, const MEvaluationNode&, const MPlug& plug, MStringArray* messages);
 private:
 	MAutoCLMem clUScale;
 	MAutoCLKernel clKernel;
@@ -95,12 +97,12 @@ public:
 		return new WraPPGPUDeformer();
 	}
 
-	bool validateNodeInGraph(MDataBlock& block, const MEvaluationNode& evaluationNode, const MPlug& plug, MStringArray* messages) override
+	bool validateNodeInGraph(MDataBlock& dataBlock, const MEvaluationNode& evaluationNode, const MPlug& plug, MStringArray* messages) override
 	{
-		return WraPPGPUDeformer::validateNodeInGraph(block, evaluationNode, plug, messages);
+		return WraPPGPUDeformer::validateNodeInGraph(dataBlock, evaluationNode, plug, messages);
 	}
-	bool validateNodeValues(MDataBlock& block, const MEvaluationNode& evaluationNode, const MPlug& plug, MStringArray* messages) override
+	bool validateNodeValues(MDataBlock& dataBlock, const MEvaluationNode& evaluationNode, const MPlug& plug, MStringArray* messages) override
 	{
-		return WraPPGPUDeformer::validateNodeValues(block, evaluationNode, plug, messages);
+		return WraPPGPUDeformer::validateNodeValues(dataBlock, evaluationNode, plug, messages);
 	}
 };
