@@ -77,45 +77,41 @@ MStatus WraPPDeformerNode::compute(const MPlug& plug, MDataBlock& dataBlock)
 				MDataHandle inputDH = inputArrDH.inputValue(&status);
 				if (status != MS::kSuccess) return status;
 				MDataHandle inputGeomDH = inputDH.child(inputGeom);
-				MObject targetMesh = inputGeomDH.asMesh();
-				MPointArray targetVertices;
-				MFnMesh targetMeshFn(targetMesh);
-				targetMeshFn.getPoints(targetVertices, MSpace::kObject);
+				MObject mesh = inputGeomDH.asMesh();
+	
+				std::vector<Triangle> triangles;
+				status = GetTrianglesFromMesh(mesh, triangles);
+				if (status != MS::kSuccess) return status;
 
 				std::vector<BaryCoordMatch> baryCoords;
-				MItMeshVertex iter(targetMesh);
-				float2 uv;
-				for (;!iter.isDone(); iter.next())
+				for (int trianglesIndex=0; trianglesIndex<triangles.size(); ++trianglesIndex)
 				{
-					bool success = false;
-				
-					for (int bindTriangleIndex = 0; bindTriangleIndex < sourceTriangles.size() && success==false; ++bindTriangleIndex)
+					for (int vertexIndex =0 ; vertexIndex < 3; ++vertexIndex)
 					{
-						BaryCoordMatch baryCoordMatch;
-						iter.getUV(uv);
-						MPoint pUV;
-						pUV.x = uv[0];
-						pUV.y = uv[1];
-						success = Barycentric(
-							pUV,
-							sourceTriangles[bindTriangleIndex].vertices[0].uv,
-							sourceTriangles[bindTriangleIndex].vertices[1].uv,
-							sourceTriangles[bindTriangleIndex].vertices[2].uv,
-							baryCoordMatch.baryCoord.x,
-							baryCoordMatch.baryCoord.y,
-							baryCoordMatch.baryCoord.z
-						);
-						baryCoordMatch.baryCoord.w = success;
-						if (success == true)
+						bool success = false;
+						for (int bindTriangleIndex = 0; bindTriangleIndex < sourceTriangles.size() && success==false; ++bindTriangleIndex)
 						{
-							baryCoordMatch.triangle.vertices[0] = sourceTriangles[bindTriangleIndex].vertices[0];
-							baryCoordMatch.triangle.vertices[1] = sourceTriangles[bindTriangleIndex].vertices[1];
-							baryCoordMatch.triangle.vertices[2] = sourceTriangles[bindTriangleIndex].vertices[2];
+							BaryCoordMatch baryCoordMatch;
+							success = Barycentric(
+								triangles[trianglesIndex].vertices[vertexIndex].uv,
+								sourceTriangles[bindTriangleIndex].vertices[0].uv,
+								sourceTriangles[bindTriangleIndex].vertices[1].uv,
+								sourceTriangles[bindTriangleIndex].vertices[2].uv,
+								baryCoordMatch.baryCoord.x,
+								baryCoordMatch.baryCoord.y,
+								baryCoordMatch.baryCoord.z
+							);
+							baryCoordMatch.baryCoord.w = success;
+							if (success == true)
+							{
+								baryCoordMatch.triangle.vertices[0] = sourceTriangles[bindTriangleIndex].vertices[0];
+								baryCoordMatch.triangle.vertices[1] = sourceTriangles[bindTriangleIndex].vertices[1];
+								baryCoordMatch.triangle.vertices[2] = sourceTriangles[bindTriangleIndex].vertices[2];
 
-							baryCoords.push_back(baryCoordMatch);
+								baryCoords.push_back(baryCoordMatch);
+							}
 						}
 					}
-					
 				}
 
 				baryCoordMatchedGeometries.push_back(baryCoords);
@@ -171,6 +167,7 @@ MStatus WraPPDeformerNode::compute(const MPlug& plug, MDataBlock& dataBlock)
 
 
 			//6 verts, only 4 is unique, setPoints needs 4 unique not 6, map 6 back to 4
+			//on mesh with complex uv, targetmesh needs to be bound by per uv triangle per vertex matching and then combine the verts that share uv vert to a average
 			newVertices.push_back(newVertex);
 			vertices.append(newVertex);
 		}
@@ -182,6 +179,7 @@ MStatus WraPPDeformerNode::compute(const MPlug& plug, MDataBlock& dataBlock)
 		MDataHandle inputGeomDH = inputDH.child(inputGeom);
 		MObject targetMesh = inputGeomDH.asMesh();
 		MFnMesh newMeshFn(targetMesh);
+
 
 		status = newMeshFn.setPoints(vertices, MSpace::kObject);
 		if (status != MS::kSuccess) return MS::kNotFound;
